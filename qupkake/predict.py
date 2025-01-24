@@ -178,7 +178,7 @@ def predict_pka(dataset: MolPairDataset, model: PredictpKa) -> torch.Tensor:
         model, DataLoader(dataset, batch_size=1, follow_batch=["x_deprot", "x_prot"])
     )
     pka_predictions = torch.cat(pka_predictions).squeeze()
-    return pka_predictions
+    return pka_predictions.tolist()
 
 
 def make_sites_prediction_files(
@@ -208,12 +208,12 @@ def make_sites_prediction_files(
         data_dict["name"] = data.name
         for i in prot_idx:
             prot_dict = data_dict.copy()
-            prot_dict["idx"] = i
+            prot_dict["idx"] = int(i)  
             prot_dict["pka_type"] = "basic"
             mol_list.append(prot_dict)
         for i in deprot_idx:
             deprot_dict = data_dict.copy()
-            deprot_dict["idx"] = i
+            deprot_dict["idx"] = int(i)  
             deprot_dict["pka_type"] = "acidic"
             mol_list.append(deprot_dict)
     PandasTools.WriteSDF(
@@ -223,6 +223,7 @@ def make_sites_prediction_files(
         idName="name",
         properties=["idx", "pka_type"],
     )
+
 
 
 def run_prediction_pipeline(
@@ -270,7 +271,7 @@ def run_prediction_pipeline(
             includeFingerprints=False,
             molColName="ROMol",
         )
-        df["pka"] = pka_predictions
+        df["pka"] = [float(pka) for pka in pka_predictions] if isinstance(pka_predictions, (list, torch.Tensor)) else [float(pka_predictions)]
 
         PandasTools.WriteSDF(
             df,
