@@ -7,24 +7,28 @@ from .qupkake import *
 __version__ = get_versions()["version"]
 
 import os
-import subprocess
+import logging
 
-try:
-    check_package = subprocess.run(["conda", "list", "xtb"], stdout=subprocess.PIPE)
-    check_package_decoded = check_package.stdout.decode("utf-8").split()
-    assert "xtb" in check_package_decoded
-    assert "6.4.1" in check_package_decoded
+logger = logging.getLogger(__name__)
 
-    XTB_LOCATION = os.environ.get("XTBPATH") or "xtb"
-except AssertionError:
-    XTB_LOCATION = os.environ.get("XTBPATH") or os.path.join(
-        os.path.dirname(__file__), "xtb-641/bin/xtb"
+# Lê a variável de ambiente XTBPATH,
+# ou usa esse caminho como padrão se XTBPATH não estiver definida:
+XTB_LOCATION = os.environ.get(
+    "XTBPATH", 
+    "/usr/insilicall/ionizationpro/QupKake/xtb-6.4.1/bin/xtb"
+)
+
+logger.info(f"Checking xTB executable at: {XTB_LOCATION}")
+
+if not os.path.exists(XTB_LOCATION):
+    raise RuntimeError(
+        f'xTB executable not found at: "{XTB_LOCATION}". '
+        f"Please ensure the path is correct or set the XTBPATH environment variable."
     )
-finally:
-    if XTB_LOCATION != "xtb":
-        if not os.path.exists(XTB_LOCATION):
-            raise RuntimeError(f'xTB exectuable in: "{XTB_LOCATION}" does not exists.')
-    else:
-        raise RuntimeError(
-            'Conda version of xTB is currently not supported.\nPlease compile it from source and export the path manually to "XTBPATH" environment variable.'
-        )
+elif not os.access(XTB_LOCATION, os.X_OK):
+    raise RuntimeError(
+        f'xTB executable found at: "{XTB_LOCATION}" but is not executable. '
+        f"Run `chmod +x {XTB_LOCATION}` or check permissions."
+    )
+
+logger.info("xTB executable found and verified.")
