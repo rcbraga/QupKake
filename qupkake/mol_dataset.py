@@ -230,7 +230,7 @@ class MolDatasetAbstract(Dataset, ABC):
     def _load_processed_data(self, file_name):
         """Load processed data from file"""
         file_path = os.path.join(self.processed_dir, file_name)
-        return torch.load(file_path)
+        return torch.load(file_path, weights_only=False) 
 
     @abstractmethod
     def _process_chunk(self, chunk):
