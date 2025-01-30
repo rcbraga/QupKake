@@ -13,14 +13,17 @@ import torch
 from rdkit import Chem, RDLogger
 from rdkit.Chem import AllChem, PandasTools
 from torch_geometric.data import Data, Dataset
+
 from tqdm import tqdm
 
 from .featurizer import Featurizer
 from .mol_utils import Tautomerize
 
+
 RDLogger.DisableLog("rdApp.*")
 
 logger = logging.getLogger(__name__)
+
 
 
 class MolPairData(Data):
@@ -296,16 +299,6 @@ class MolPairDataset(MolDatasetAbstract):
         self.mp = mp
         self.kwargs = kwargs
 
-        # root: str,
-        # filename: str,
-        # name_col: str = None,
-        # mol_col: str = None,
-        # smiles_col: str = None,
-        # other_cols: Tuple[str, list[str]] = None,
-        # mp: bool = False,
-        # transform: Any = None,
-        # pre_transform: Any = None,
-        # **kwargs,
         super().__init__(
             root,
             filename,
@@ -318,46 +311,26 @@ class MolPairDataset(MolDatasetAbstract):
             pre_transform,
         )
 
-    def _check_columns(self) -> None:
-        if self.other_cols is not None:
-            if isinstance(self.other_cols, str):
-                self.other_cols = [self.other_cols]
-            if isinstance(self.other_cols, list):
-                for col in self.other_cols:
-                    if col not in self.data.columns:
-                        raise ValueError(f"{col} not in file.")
-
-    @property
-    def processed_file_names(self) -> list[str]:
-        """If these files are found in raw_dir, processing is skipped"""
-        self.data = self._get_data(False)
-        self._check_columns()
-        # return f'{self.data_name}_{self.set}.pt'
-        return [
-            f"{name}_{idx}_{conjugate}_pair.pt"
-            for (name, idx, conjugate) in zip(
-                list(self.data[self.name_col]),
-                list(self.data[self.idx_col]),
-                list(self.data[self.type_col]),
-            )
-        ]
+    def processed_file_names(self):
+            """Define os nomes dos arquivos processados."""
+            return [f"{self.filename}.pt"]
+    def _load_processed_data(self, file_name):
+        """Load processed data from file safely."""
+        file_path = os.path.join(self.processed_dir, file_name)
+        return load_safe_checkpoint(file_path)
 
     def _process_chunk(self, chunk, chunk_pos) -> pd.DataFrame:
-        """Processing a chunk of data from the dataframe"""
+        """Processing a chunk of data from the dataframe."""
         bad_idx = []
         pbar = tqdm(chunk.iterrows(), total=len(chunk), position=chunk_pos)
         for index, row in pbar:
             pbar.set_description("Processing %s" % row[self.name_col])
-
             file_name = (
                 f"{row[self.name_col]}_{row[self.idx_col]}_{row[self.type_col]}_pair.pt"
             )
             try:
                 if not os.path.exists(
-                    os.path.join(
-                        self.processed_dir,
-                        file_name,
-                    )
+                    os.path.join(self.processed_dir, file_name)
                 ):
                     self._process_row_with_retry(row)
                 else:
@@ -366,7 +339,6 @@ class MolPairDataset(MolDatasetAbstract):
                 bad_idx.append(index)
                 self._handle_processing_error(row, e)
         chunk = chunk.drop(bad_idx).reset_index(drop=True)
-        # return the chunk
         return chunk
 
     def _process_row_with_retry(self, row):
@@ -506,7 +478,8 @@ class MolPairDataset(MolDatasetAbstract):
         atom_idx = self.data.loc[idx, self.idx_col]
         conjugate = self.data.loc[idx, self.type_col]
         data = torch.load(
-            os.path.join(self.processed_dir, f"{name}_{atom_idx}_{conjugate}_pair.pt")
+            os.path.join(self.processed_dir, f"{name}_{atom_idx}_{conjugate}_pair.pt"),
+             weights_only=False 
         )
         return data
 

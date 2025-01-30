@@ -6,6 +6,8 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.nn import BatchNorm, Linear, TransformerConv
 from torch_geometric.nn import global_mean_pool as gap
 
+from .mol_dataset import MolPairData
+torch.serialization.add_safe_globals([MolPairData])
 
 class Transformer4(torch.nn.Module):
     def __init__(
@@ -186,7 +188,6 @@ class PredictpKa(pl.LightningModule):
             threshold=1e-4,
             threshold_mode="abs",
         )
-        # return optimizer
         return {
             "optimizer": self.optimizer,
             "lr_scheduler": {
